@@ -1,25 +1,7 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  db:
-    image: postgres:15-alpine
-    container_name: debugai-db
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # FastAPI Backend
+  # FastAPI Backend (connects to Supabase cloud database)
   backend:
     build:
       context: ./backend
@@ -28,15 +10,15 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
       - DATABASE_URL=${DATABASE_URL}
       - ENVIRONMENT=${ENVIRONMENT}
     volumes:
       - ./backend:/app
       - /app/__pycache__
-    depends_on:
-      db:
-        condition: service_healthy
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   # Next.js Frontend
   frontend:
@@ -55,6 +37,3 @@ services:
     depends_on:
       - backend
     command: npm run dev
-
-volumes:
-  postgres_data:
