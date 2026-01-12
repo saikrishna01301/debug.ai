@@ -7,7 +7,7 @@ from datetime import datetime
 class ParsedError(Base):
     __tablename__ = "parsed_errors"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     # raw input error log
     raw_error_log: Mapped[str] = mapped_column(String, nullable=False)
     # parsed fields

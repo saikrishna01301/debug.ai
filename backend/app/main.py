@@ -24,10 +24,10 @@ app.add_middleware(
 )
 
 
-# # Run this function exactly once, when the application first starts up
-# @app.on_event("startup")
-# async def on_startup():
-#     await init_db()
+# Run this function exactly once, when the application first starts up
+@app.on_event("startup")
+async def on_startup():
+    await init_db()
 
 
 @app.get("/")

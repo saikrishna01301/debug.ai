@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # FastAPI Backend (connects to Supabase cloud database)
   backend:
@@ -16,6 +14,7 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - ENVIRONMENT=${ENVIRONMENT}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - STACKEXCHANGE_API_KEY=${STACKEXCHANGE_API_KEY}
     volumes:
       - ./backend:/app
       - /app/__pycache__
