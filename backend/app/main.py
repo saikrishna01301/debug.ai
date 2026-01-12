@@ -1,8 +1,16 @@
+import logging
+from dotenv import load_dotenv
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.db import init_db
 from app.services.parser import ErrorParser
+
+# Load environment variables
+load_dotenv()
+
+# Configure logging for the entire application
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="DebugAI API", version="1.0.0")
 

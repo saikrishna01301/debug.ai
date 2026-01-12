@@ -58,6 +58,10 @@ postgres_data/
 *.sql
 *.dump
 
+# ChromaDB / Vector Store
+chroma_db/
+*.bin
+
 # OS
 .DS_Store
 Thumbs.db

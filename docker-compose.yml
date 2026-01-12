@@ -15,6 +15,7 @@ services:
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
       - DATABASE_URL=${DATABASE_URL}
       - ENVIRONMENT=${ENVIRONMENT}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
     volumes:
       - ./backend:/app
       - /app/__pycache__
