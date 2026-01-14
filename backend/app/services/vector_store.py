@@ -53,11 +53,14 @@ class VectorStore:
         # adding multiple documents at one
         logging.info(f"Generating embedding for {len(texts)} documents ")
 
-        # generating embeddings for bunch of docs
-        embeddings = [self._get_embedding(text) for text in texts]
+        # generating embeddings for bunch of docs in a single API call
+        embeddings = self._get_embeddings_batch(texts)
 
         # add all together to vector db (chromadb)
-        self.collection.add(
+        # UPSERT ensures idempotent ingestion:
+        # - update if ID exists
+        # - insert if ID does not exist
+        self.collection.upsert(
             embeddings=embeddings, documents=texts, metadatas=metadatas, ids=ids
         )
 
@@ -82,6 +85,7 @@ class VectorStore:
             where=filter_metadata,
         )
 
+        # TODO: later i need to Process and return results as needed
         # returns Dict with documents, metadatas, distances
         return result
 
@@ -95,7 +99,15 @@ class VectorStore:
     def _get_embedding(self, text: str):
         # Generate embedding using GitHub Models (OpenAI-compatible)
         response = self.embedding_client.embeddings.create(
-            input=[text],
-            model=self.model_name
+            input=[text], model=self.model_name
         )
         return response.data[0].embedding
+
+    def _get_embeddings_batch(self, texts: List[str]):
+        """Generate embeddings for multiple texts in a single API call"""
+        # The API accepts up to 2048 texts at once, but we'll process all at once for now
+        response = self.embedding_client.embeddings.create(
+            input=texts, model=self.model_name
+        )
+        # Extract embeddings in the same order as input texts
+        return [item.embedding for item in response.data]

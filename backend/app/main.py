@@ -2,9 +2,11 @@ import logging
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+
 from app.db import init_db
 from app.services.parser import ErrorParser
+from app.services.vector_store import VectorStore
+from app.schemas.search import SearchRequest, SearchResponse, SearchResult
 
 # Load environment variables
 load_dotenv()
@@ -23,6 +25,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+parser = ErrorParser()
+vc = VectorStore()
 
 # Run this function exactly once, when the application first starts up
 @app.on_event("startup")
@@ -36,8 +40,39 @@ async def root():
     return {"message": "Welcome to DebugAI API with Supabase"}
 
 
-@app.get("/api/test")
-async def test_endpoint(error_logs: str):
-    parser = ErrorParser()
-    parsed_data = parser.parse(error_logs)
-    return {"parsed_data": parsed_data}
+@app.post("/api/search", response_model=SearchResponse)
+def search_knowledge_base(request: SearchRequest):
+    # Parse error log to extract meaningful search terms
+    parsed_error = parser.parse(request.query)
+
+    # Create better search query from parsed error
+    if parsed_error.get('error_type') and parsed_error.get('error_message'):
+        search_query = f"{parsed_error['error_type']}: {parsed_error['error_message']}"
+    else:
+        search_query = request.query
+
+    results = vc.search(search_query, n_results=request.limit)
+    
+    search_results = []
+    for doc, meta, distance in zip(
+        results['documents'][0],
+        results['metadatas'][0],
+        results['distances'][0]
+    ):
+        search_results.append(SearchResult(
+            title=meta['title'],
+            url=meta['url'],
+            content=doc[:500],  # First 500 chars
+            tags=meta['tags'].split(', ') if isinstance(meta['tags'], str) else meta['tags'],
+            votes=meta['votes'],
+            distance=distance
+        ))
+    
+    return SearchResponse(
+        query=request.query,
+        results=search_results,
+        total_results=len(search_results)
+    )
+    
+
+    

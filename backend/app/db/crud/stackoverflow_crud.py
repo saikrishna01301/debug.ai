@@ -17,3 +17,9 @@ async def create_post(session: AsyncSession, post_data: dict) -> StackOverFlowPo
     await session.commit()
     await session.refresh(post)
     return post
+
+async def get_all_posts(session: AsyncSession):
+    """Get all Stack Overflow posts from the database"""
+    stmt = select(StackOverFlowPost)
+    result = await session.execute(stmt)
+    return result.scalars().all() 

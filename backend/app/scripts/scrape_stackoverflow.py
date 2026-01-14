@@ -93,6 +93,7 @@ async def scrape_stackoverflow(tag: str, limit: int = 100):
                         continue
 
                     # post data to store in db
+                    # combining both answer_body with question dict to store in db
                     post = {
                         "question_id": q.get("question_id"),
                         "title": q.get("title"),
