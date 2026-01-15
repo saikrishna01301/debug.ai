@@ -16,7 +16,7 @@ STACKEXCHANGE_API_KEY = os.getenv("STACKEXCHANGE_API_KEY")
 
 
 # Scraping Stack Overflow questions with answers
-async def scrape_stackoverflow(tag: str, limit: int = 1000):
+async def scrape_stackoverflow(tag: str, limit: int):
     async for session in get_session():
         logging.info(f"Scraping Stack Overflow {tag} with {limit} posts")
 

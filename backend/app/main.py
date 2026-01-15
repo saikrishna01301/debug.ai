@@ -1,6 +1,6 @@
 import logging
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +11,11 @@ from app.services.parser import ErrorParser
 from app.services.vector_store import VectorStore
 from app.schemas.search import SearchRequest, SearchResponse, SearchResult
 from app.schemas.analysis import AnalysisResponse
+from app.schemas.scrape import ScrapeRequest, ScrapeResponse
 from app.services.llm_analyzer import LLMAnalyzer
+from app.scripts.scrape_stackoverflow import scrape_stackoverflow
+from app.scripts.batch_scrape import scrape_all_tags
+from app.scripts.create_embeddings import create_embeddings
 
 # Load environment variables
 load_dotenv()
@@ -58,26 +62,32 @@ async def analyze_error(request: SearchRequest, session: AsyncSession = Depends(
     else:
         search_query = request.query
 
-    results = vc.search(search_query, n_results=request.limit)
+    results = vc.search(search_query, n_results=min(request.limit, 3))  # Max 3 for faster response
 
+    # Filter results by relevance threshold (distance < 0.6 means relevant)
+    RELEVANCE_THRESHOLD = 0.6
     search_results = []
     for doc, meta, distance in zip(
         results["documents"][0], results["metadatas"][0], results["distances"][0]
     ):
-        search_results.append(
-            SearchResult(
-                title=meta["title"],
-                url=meta["url"],
-                content=doc[:500],  # First 500 chars
-                tags=(
-                    meta["tags"].split(", ")
-                    if isinstance(meta["tags"], str)
-                    else meta["tags"]
-                ),
-                votes=meta["votes"],
-                distance=distance,
+        # Only include results that are actually relevant
+        if distance < RELEVANCE_THRESHOLD:
+            search_results.append(
+                SearchResult(
+                    title=meta["title"],
+                    url=meta["url"],
+                    content=doc[:500],  # First 500 chars
+                    tags=(
+                        meta["tags"].split(", ")
+                        if isinstance(meta["tags"], str)
+                        else meta["tags"]
+                    ),
+                    votes=meta["votes"],
+                    distance=distance,
+                )
             )
-        )
+
+    logging.info(f"Found {len(search_results)} relevant results (threshold: {RELEVANCE_THRESHOLD})")
 
     # Convert SearchResult objects to dicts for LLM analyzer
     search_results_dicts = [result.dict() for result in search_results]
@@ -125,3 +135,88 @@ async def analyze_error(request: SearchRequest, session: AsyncSession = Depends(
     )
 
     return analysis_result
+
+
+@app.post("/api/scrape/batch")
+async def batch_scrape():
+    """
+    Scrape multiple Stack Overflow tags in one go.
+
+    This will scrape:
+    - Python: 500 posts
+    - JavaScript: 500 posts
+    - React: 300 posts
+    - TypeScript: 300 posts
+    - Node.js: 200 posts
+    - Django: 150 posts
+    - FastAPI: 100 posts
+
+    Total: 2,050 posts across 7 tags
+    """
+    try:
+        result = await scrape_all_tags()
+        return {
+            "status": "success",
+            "message": f"Batch scrape completed: {result['total_scraped']}/{result['total_target']} posts",
+            "total_scraped": result['total_scraped'],
+            "total_target": result['total_target'],
+            "tags_count": result['tags_count']
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Batch scrape failed: {str(e)}",
+            "error": str(e)
+        }
+
+
+@app.post("/api/scrape", response_model=ScrapeResponse)
+async def scrape_posts(request: ScrapeRequest):
+    """
+    Scrape Stack Overflow posts for a specific tag.
+
+    You can specify any tag and the number of posts you want to scrape (1-1000).
+
+    **Common tags**: python, javascript, react, typescript, node.js, django, fastapi, java, go, rust
+    """
+    try:
+        await scrape_stackoverflow(request.tag, request.limit)
+        return ScrapeResponse(
+            status="success",
+            message=f"Successfully scraped {request.limit} posts for tag: {request.tag}",
+            tag=request.tag,
+            posts_scraped=request.limit
+        )
+    except Exception as e:
+        return ScrapeResponse(
+            status="error",
+            message=f"Failed to scrape posts",
+            tag=request.tag,
+            error=str(e)
+        )
+
+
+@app.post("/api/embeddings/create")
+async def create_embeddings_endpoint():
+    """
+    Create embeddings for all Stack Overflow posts in the database.
+
+    This will:
+    1. Fetch all posts from the database
+    2. Generate embeddings using OpenAI
+    3. Store them in ChromaDB vector store
+
+    **Note**: This processes posts in batches of 500 for efficiency.
+    """
+    try:
+        await create_embeddings()
+        return {
+            "status": "success",
+            "message": "Embeddings created successfully for all posts"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to create embeddings: {str(e)}",
+            "error": str(e)
+        }

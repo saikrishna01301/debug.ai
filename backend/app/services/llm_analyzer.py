@@ -13,7 +13,7 @@ class LLMAnalyzer:
             base_url="https://models.inference.ai.azure.com",
             api_key=os.getenv("GITHUB_TOKEN"),
         )
-        self.model = "gpt-4o"
+        self.model = "gpt-4o-mini"  # Much faster and cheaper than gpt-4o
 
     # search_results = []
     def analyze_error(self, parsed_error: Dict, search_results: List[Dict]) -> Dict:
@@ -58,6 +58,8 @@ class LLMAnalyzer:
             - Explain WHY each solution works, not just HOW
             - Be honest about uncertainty (confidence < 0.7 if unsure)
             - Keep solutions practical and actionable
+            - If context is limited or irrelevant, rely on your general knowledge but lower confidence scores
+            - Only use source URLs if they are actually relevant to the solution
         """
         return prompt
 
@@ -96,7 +98,7 @@ class LLMAnalyzer:
         context_parts = []
 
         for i, result in enumerate(search_results):
-            content = result.get("content")[:800]  # limiting the context per result
+            content = result.get("content")[:400]  # Limit to 400 chars for faster processing
 
             context_parts.append(
                 f"""--- Source {i} (Votes: {result.get('votes', 0)}, Relevance: {1 - result['distance']:.2f}) ---

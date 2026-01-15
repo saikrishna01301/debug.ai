@@ -16,6 +16,7 @@ async def create_embeddings():
     try:
         # get all posts from Database
         async for session in get_session():
+            # fetch posts from db
             posts = await get_all_posts(session)
             logging.info(f"found {len(posts)} to embed")
             if len(posts) == 0:
@@ -23,7 +24,7 @@ async def create_embeddings():
                 return
 
             # Process posts and create embeddings
-            batch_size = 500
+            batch_size = 50  # Reduced to stay under 64k token limit
             # for clarity (start, end, step)
             for i in range(0, len(posts), batch_size):
                 batch = posts[i : i + batch_size]
@@ -34,7 +35,11 @@ async def create_embeddings():
                 ids = []
 
                 for post in batch:
-                    combined_text = f"Title:{post.title} Question:{post.question_body} Answer:{post.answer_body}".strip()
+                    # Truncate to ~2000 chars per post to avoid token limits
+                    # 50 posts × 500 tokens (~2000 chars) = 25,000 tokens (well under 64k limit)
+                    question_body = post.question_body[:1000] if post.question_body else ""
+                    answer_body = post.answer_body[:1000] if post.answer_body else ""
+                    combined_text = f"Title:{post.title} Question:{question_body} Answer:{answer_body}".strip()
                     metadata = {
                         "source": "stackoverflow",
                         "question_id": post.question_id,

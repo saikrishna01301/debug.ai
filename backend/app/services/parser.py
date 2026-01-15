@@ -1,4 +1,5 @@
 import re
+from typing import Dict
 
 # parse error to structured data
 
@@ -12,13 +13,21 @@ class ErrorParser:
             "function": r"in (\w+)",
         }
 
+        # JavaScript error patterns
+        self.js_patterns = {
+            "error_type": r"(TypeError|ReferenceError|SyntaxError|RangeError|Error):",
+            "file_line": r"at .+ \((.+):(\d+):(\d+)\)",
+            "file_line_alt": r"at (.+):(\d+):(\d+)",
+            "function": r"at (\w+)",
+        }
+
     def parse(self, error_message: str) -> dict:
         language = self.detect_language(error_message)
 
         if language == "python":
             return self.parse_python_error(error_message)
         elif language == "javascript":
-            return self.parse_javascript_error(error_message)
+            return self._parse_javascript(error_message)
         else:
             return self.parse_unknown_error(error_message)
 
@@ -28,10 +37,18 @@ class ErrorParser:
             return "python"
 
         # JavaScript indicators
-        if (
-            "    at " in error_message
-            or "TypeError:" in error_message
-            and ".js:" in error_message
+        if any(
+            indicator in error_message
+            for indicator in [
+                "    at ",
+                "TypeError:",
+                "ReferenceError:",
+                "SyntaxError:",
+                ".js:",
+                ".jsx:",
+                ".ts:",
+                ".tsx:",
+            ]
         ):
             return "javascript"
 
@@ -81,9 +98,69 @@ class ErrorParser:
 
         return result
 
-    def parse_javascript_error(self, error_message: str) -> dict:
-        pass
+    def _parse_javascript(self, error_log: str) -> Dict:
 
-    def parse_unknown_error(self, error_message: str) -> dict:
-        # Fallback parser for unknown languages uses LLM
-        pass
+        # Parse JavaScript/TypeScript error logs
+
+        result = {
+            "raw_error_log": error_log,
+            "language": "javascript",
+            "error_type": None,
+            "error_message": None,
+            "file_path": None,
+            "line_number": None,
+            "function_name": None,
+            "stack_trace": [],
+            "confidence": 0,
+        }
+
+        # Extract error type
+        error_match = re.search(self.js_patterns["error_type"], error_log)
+        if error_match:
+            result["error_type"] = error_match.group(1)
+            result["confidence"] += 30
+
+        # Extract error message
+        if result["error_type"]:
+            message_pattern = f'{result["error_type"]}: (.+?)(?:\n|$)'
+            message_match = re.search(message_pattern, error_log)
+            if message_match:
+                result["error_message"] = message_match.group(1).strip()
+                result["confidence"] += 20
+
+        # Extract file and line number
+        file_matches = re.findall(self.js_patterns["file_line"], error_log)
+        if not file_matches:
+            file_matches = re.findall(self.js_patterns["file_line_alt"], error_log)
+
+        if file_matches:
+            # Get the first occurrence (usually the error location)
+            if len(file_matches[0]) == 3:
+                file_path, line, column = file_matches[0]
+                result["file_path"] = file_path
+                result["line_number"] = int(line)
+                result["confidence"] += 30
+
+                # Store stack trace
+                result["stack_trace"] = [
+                    {"file": f, "line": int(l), "column": int(c)}
+                    for f, l, c in file_matches
+                ]
+
+        # Extract function name
+        function_match = re.search(self.js_patterns["function"], error_log)
+        if function_match:
+            result["function_name"] = function_match.group(1)
+            result["confidence"] += 20
+
+        # Detect if it's React-specific
+        if "react" in error_log.lower() or "jsx" in error_log.lower():
+            result["framework"] = "react"
+        elif "node" in error_log.lower():
+            result["framework"] = "node"
+
+        return result
+
+        def parse_unknown_error(self, error_message: str) -> dict:
+            # Fallback parser for unknown languages uses LLM
+            pass
