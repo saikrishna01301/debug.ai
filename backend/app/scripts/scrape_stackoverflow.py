@@ -16,7 +16,7 @@ STACKEXCHANGE_API_KEY = os.getenv("STACKEXCHANGE_API_KEY")
 
 
 # Scraping Stack Overflow questions with answers
-async def scrape_stackoverflow(tag: str, limit: int = 100):
+async def scrape_stackoverflow(tag: str, limit: int = 1000):
     async for session in get_session():
         logging.info(f"Scraping Stack Overflow {tag} with {limit} posts")
 
@@ -31,7 +31,7 @@ async def scrape_stackoverflow(tag: str, limit: int = 100):
             "sort": "votes",
             "order": "desc",
             "filter": "withbody",  # Include question body
-            "pagesize": limit,
+            "pagesize": 100,  # Max page size
         }
 
         posts_added = 0

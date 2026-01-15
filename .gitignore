@@ -69,3 +69,7 @@ Thumbs.db
 # Misc
 *.pem
 .vercel
+
+# Documentation (PDF versions)
+APPLICATION_FLOW.pdf
+*.pdf

@@ -5,7 +5,7 @@ import logging
 import asyncio
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(message)s")
 
 
 async def create_embeddings():
@@ -23,7 +23,7 @@ async def create_embeddings():
                 return
 
             # Process posts and create embeddings
-            batch_size = 50
+            batch_size = 500
             # for clarity (start, end, step)
             for i in range(0, len(posts), batch_size):
                 batch = posts[i : i + batch_size]

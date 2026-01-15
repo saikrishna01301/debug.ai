@@ -1,6 +1,6 @@
 from app.db.base import Base
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, Integer, JSON
+from sqlalchemy import String, Integer, JSON, Text
 from datetime import datetime
 
 
@@ -26,4 +26,23 @@ class ParsedError(Base):
 
     # metadata
     confidence_score: Mapped[int] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+
+
+class Analysis(Base):
+    __tablename__ = "analyses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    # Link to parsed error
+    parsed_error_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Analysis results
+    root_cause: Mapped[str] = mapped_column(Text, nullable=False)
+    reasoning: Mapped[str] = mapped_column(Text, nullable=False)
+    solutions: Mapped[dict] = mapped_column(JSON, nullable=False)  # Array of solutions
+
+    # Metadata
+    sources_used: Mapped[int] = mapped_column(Integer, nullable=True)
+    analysis_time: Mapped[int] = mapped_column(Integer, nullable=True)  # milliseconds
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
