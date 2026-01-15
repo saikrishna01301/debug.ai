@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+.gradient-bg {
+  background: linear-gradient(135deg, #EFF6FF 0%, #E0E7FF 100%);
+}
+.gradient-button {
+  background: linear-gradient(90deg, #2563EB 0%, #4F46E5 100%);
+}
+.gradient-button:hover {
+  background: linear-gradient(90deg, #1D4ED8 0%, #4338CA 100%);
+}

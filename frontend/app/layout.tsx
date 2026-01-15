@@ -1,3 +1,5 @@
+import './globals.css'
+
 export const metadata = {
   title: 'DebugAI',
   description: 'DebugAI Application',
@@ -10,7 +12,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="gradient-bg">{children}</body>
     </html>
   )
 }

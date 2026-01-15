@@ -1,39 +1,46 @@
-'use client'
-
-import { useEffect, useState } from 'react'
+'use client';
+import { useState } from 'react';
+import { AnalysisResult } from '@/components/interfaces';
+import Header from '@/components/Header';
+import InputSection from '@/components/InputSection';
+import ResultsSection from '@/components/ResultsSection';
+import { apiService } from '@/services/api';
 
 export default function Home() {
-  const [apiData, setApiData] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const [errorLog, setErrorLog] = useState('');
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/test`)
-      .then(res => res.json())
-      .then(data => {
-        setApiData(data)
-        setLoading(false)
-      })
-      .catch(err => {
-        console.error('Error fetching from API:', err)
-        setLoading(false)
-      })
-  }, [])
+  const handleAnalyze = async () => {
+    setLoading(true);
+    setResult(null);
+
+    try {
+      console.log('Sending analysis request with:', errorLog);
+      const data = await apiService.analyze(errorLog, 5);
+      console.log('Received response:', data);
+      setResult(data);
+    } catch (error: any) {
+      console.error('Full error object:', error);
+      const errorMessage = error?.message || 'Failed to analyze error. Please try again.';
+      alert(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <main style={{ padding: '2rem', fontFamily: 'system-ui' }}>
-      <h1>Welcome to DebugAI</h1>
-      <p>Frontend is running on Next.js</p>
-
-      <div style={{ marginTop: '2rem', padding: '1rem', background: '#f5f5f5', borderRadius: '8px' }}>
-        <h2>API Connection Test</h2>
-        {loading ? (
-          <p>Loading...</p>
-        ) : apiData ? (
-          <pre>{JSON.stringify(apiData, null, 2)}</pre>
-        ) : (
-          <p>Failed to connect to API</p>
-        )}
+    <main className="min-h-screen p-8">
+      <div className="max-w-6xl mx-auto">
+        <Header />
+        <InputSection
+          errorLog={errorLog}
+          setErrorLog={setErrorLog}
+          handleAnalyze={handleAnalyze}
+          loading={loading}
+        />
+        {result && <ResultsSection result={result} />}
       </div>
     </main>
-  )
+  );
 }
