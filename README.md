@@ -2,6 +2,12 @@
 
 An intelligent debugging assistant that analyzes error logs and provides AI-generated solutions using RAG (Retrieval-Augmented Generation) with Stack Overflow knowledge base.
 
+## 🚀 Live Demo
+
+- **Frontend**: [https://debugai.vercel.app/](https://debugai.vercel.app/)
+- **Backend API**: [https://debugai-production.up.railway.app/](https://debugai-production.up.railway.app/)
+- **API Docs**: [https://debugai-production.up.railway.app/docs](https://debugai-production.up.railway.app/docs)
+
 ## Tech Stack
 
 - **Backend**: Python FastAPI
@@ -142,15 +148,24 @@ debugAi/
 
 ### Production Deployment
 
-The application is deployed on:
-- **Backend**: Railway (https://your-app.railway.app)
-- **Frontend**: Vercel (https://your-app.vercel.app)
+**Live Application:**
+- **Frontend**: https://debugai.vercel.app/
+- **Backend API**: https://debugai-production.up.railway.app/
+- **API Documentation**: https://debugai-production.up.railway.app/docs
 
-Make sure to:
+**Deployment Platforms:**
+- **Backend**: Railway
+- **Frontend**: Vercel
+
+**Deployment Checklist:**
 1. Set all environment variables in Railway/Vercel dashboards
 2. Ensure `GITHUB_TOKEN` has no trailing whitespace/newlines
-3. Configure CORS origins to include your production domain
+3. Configure CORS origins to include your production domain:
+   ```
+   ALLOWED_ORIGINS=https://debugai.vercel.app
+   ```
 4. Use Supabase connection pooler for better performance
+5. Verify pgvector extension is enabled in Supabase
 
 ## Docker Commands
 
@@ -416,7 +431,9 @@ ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
 
 ## Contact
 
-[Add your contact information]
+**Sai Krishna**
+- Email: kokkulasaikrishna1288@gmail.com
+- Project: [DebugAI on GitHub](https://github.com/saikrishna01301/debug.ai)
 
 ---
 
