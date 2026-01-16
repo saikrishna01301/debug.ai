@@ -12,7 +12,7 @@ from app.db.crud import post_exists, create_post
 load_dotenv()
 
 # Get Stack Exchange API key from environment
-STACKEXCHANGE_API_KEY = os.getenv("STACKEXCHANGE_API_KEY")
+STACKEXCHANGE_API_KEY = os.getenv("STACKEXCHANGE_API_KEY", "").strip()
 
 
 # Scraping Stack Overflow questions with answers

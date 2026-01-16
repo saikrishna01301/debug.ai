@@ -12,9 +12,10 @@ class SupabaseVectorStore:
 
     def __init__(self):
         # Initialize OpenAI client for GitHub Models
+        github_token = os.getenv("GITHUB_TOKEN", "").strip()
         self.embedding_client = OpenAI(
             base_url="https://models.inference.ai.azure.com",
-            api_key=os.getenv("GITHUB_TOKEN"),
+            api_key=github_token,
         )
         self.model_name = "text-embedding-3-small"
         logging.info("Supabase Vector store initialized")
