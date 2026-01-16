@@ -1,6 +1,6 @@
 from app.db import get_session
 from app.db.crud import get_all_posts
-from app.services.vector_store import VectorStore
+from app.services.supabase_vector_store import SupabaseVectorStore
 import logging
 import asyncio
 
@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(message)s")
 async def create_embeddings():
     """Read stack over post from db and create embeddings and add to vector db"""
 
-    vs = VectorStore()
+    vs = SupabaseVectorStore()
 
     try:
         # get all posts from Database
@@ -58,7 +58,7 @@ async def create_embeddings():
                 logging.info(
                     f"Processing batch {i//batch_size + 1}/{(len(posts)-1)//batch_size + 1}..."
                 )
-                vs.add_documents_batch(texts, metadatas, ids)
+                await vs.add_documents_batch(texts, metadatas, ids)
 
     except Exception as e:
         logging.exception("Error creating embeddings")

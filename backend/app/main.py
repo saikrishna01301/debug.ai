@@ -9,7 +9,7 @@ from app.db import init_db
 from app.db.session import get_session
 from app.db.crud import create_parsed_error, create_analysis
 from app.services.parser import ErrorParser
-from app.services.vector_store import VectorStore
+from app.services.supabase_vector_store import SupabaseVectorStore
 from app.schemas.search import SearchRequest, SearchResponse, SearchResult
 from app.schemas.analysis import AnalysisResponse
 from app.schemas.scrape import ScrapeRequest, ScrapeResponse
@@ -40,7 +40,7 @@ app.add_middleware(
 )
 
 parser = ErrorParser()
-vc = VectorStore()
+vc = SupabaseVectorStore()
 llm = LLMAnalyzer()
 
 
@@ -72,7 +72,7 @@ async def analyze_error(request: SearchRequest, session: AsyncSession = Depends(
     else:
         search_query = request.query
 
-    results = vc.search(search_query, n_results=min(request.limit, 3))  # Max 3 for faster response
+    results = await vc.search(search_query, n_results=min(request.limit, 3))  # Max 3 for faster response
 
     # Filter results by relevance threshold (distance < 0.6 means relevant)
     RELEVANCE_THRESHOLD = 0.6
