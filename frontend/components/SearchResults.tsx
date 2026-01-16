@@ -1,4 +1,4 @@
-import { SearchResult } from '@/services/api';
+import { SearchResult } from './interfaces';
 
 interface SearchResultsProps {
   results: SearchResult[];

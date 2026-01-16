@@ -8,6 +8,15 @@ export interface Solution {
   source_urls?: string[];
 }
 
+export interface SearchResult {
+  title: string;
+  url: string;
+  content: string;
+  tags: string[];
+  votes: number;
+  distance: number;
+}
+
 export interface AnalysisResult {
   error_type: string;
   error_message: string;

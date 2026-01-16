@@ -1,4 +1,5 @@
 import logging
+import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,10 +26,14 @@ logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="DebugAI API", version="1.0.0")
 
+# Get allowed origins from environment variable (comma-separated)
+# Default includes localhost for development
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,8 +52,13 @@ async def on_startup():
 
 @app.get("/")
 async def root():
-
     return {"message": "Welcome to DebugAI API with Supabase"}
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring and load balancers"""
+    return {"status": "healthy", "service": "DebugAI API"}
 
 
 @app.post("/api/analyze")

@@ -15,6 +15,7 @@ services:
       - ENVIRONMENT=${ENVIRONMENT}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - STACKEXCHANGE_API_KEY=${STACKEXCHANGE_API_KEY}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
     volumes:
       - ./backend:/app
       - /app/__pycache__
