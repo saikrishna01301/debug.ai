@@ -28,7 +28,11 @@ app = FastAPI(title="DebugAI API", version="1.0.0")
 
 # Get allowed origins from environment variable (comma-separated)
 # Default includes localhost for development
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
+ALLOWED_ORIGINS = [origin.strip() for origin in allowed_origins_str.split(",")]
+
+# Log CORS configuration for debugging
+logging.info(f"CORS allowed origins: {ALLOWED_ORIGINS}")
 
 # Configure CORS
 app.add_middleware(
