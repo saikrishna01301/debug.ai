@@ -161,6 +161,16 @@ class ErrorParser:
 
         return result
 
-        def parse_unknown_error(self, error_message: str) -> dict:
-            # Fallback parser for unknown languages uses LLM
-            pass
+    def parse_unknown_error(self, error_message: str) -> dict:
+        """Fallback parser for unknown error formats"""
+        return {
+            "raw_error_log": error_message,
+            "language": "unknown",
+            "error_type": "Unknown",
+            "error_message": error_message[:500],  # First 500 chars
+            "file_path": None,
+            "line_number": None,
+            "function_name": None,
+            "stack_trace": [],
+            "confidence": 10,  # Low confidence for unknown errors
+        }
