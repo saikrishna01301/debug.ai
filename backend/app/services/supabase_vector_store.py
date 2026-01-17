@@ -13,12 +13,22 @@ class SupabaseVectorStore:
     def __init__(self):
         # Initialize OpenAI client for GitHub Models
         github_token = os.getenv("GITHUB_TOKEN", "").strip()
+
+        # Validate token
+        if not github_token:
+            logging.error("GITHUB_TOKEN environment variable is not set!")
+            raise ValueError("GITHUB_TOKEN is required but not found in environment")
+
+        # Log token prefix for debugging (never log the full token)
+        token_prefix = github_token[:20] if len(github_token) > 20 else github_token[:10]
+        logging.info(f"Initializing with GitHub token prefix: {token_prefix}...")
+
         self.embedding_client = OpenAI(
             base_url="https://models.inference.ai.azure.com",
             api_key=github_token,
         )
         self.model_name = "text-embedding-3-small"
-        logging.info("Supabase Vector store initialized")
+        logging.info(f"Supabase Vector store initialized with model: {self.model_name}")
 
     async def add_document(self, text: str, metadata: Dict, doc_id: str):
         """
@@ -165,14 +175,37 @@ class SupabaseVectorStore:
 
     def _get_embedding(self, text: str):
         """Generate embedding using GitHub Models (OpenAI-compatible)"""
-        response = self.embedding_client.embeddings.create(
-            input=[text], model=self.model_name
-        )
-        return response.data[0].embedding
+        try:
+            response = self.embedding_client.embeddings.create(
+                input=[text], model=self.model_name
+            )
+
+            # Debug logging
+            logging.info(f"Embedding API response type: {type(response)}")
+            logging.info(f"Embedding API response: {response}")
+
+            if response.data is None:
+                logging.error("Embedding API returned None for data field")
+                raise ValueError("Embedding API returned None - check API key and endpoint")
+
+            return response.data[0].embedding
+        except Exception as e:
+            logging.error(f"Error generating embedding: {str(e)}")
+            logging.error(f"Error type: {type(e)}")
+            raise
 
     def _get_embeddings_batch(self, texts: List[str]):
         """Generate embeddings for multiple texts in a single API call"""
-        response = self.embedding_client.embeddings.create(
-            input=texts, model=self.model_name
-        )
-        return [item.embedding for item in response.data]
+        try:
+            response = self.embedding_client.embeddings.create(
+                input=texts, model=self.model_name
+            )
+
+            if response.data is None:
+                logging.error("Batch embedding API returned None for data field")
+                raise ValueError("Embedding API returned None - check API key and endpoint")
+
+            return [item.embedding for item in response.data]
+        except Exception as e:
+            logging.error(f"Error generating batch embeddings: {str(e)}")
+            raise

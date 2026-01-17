@@ -99,16 +99,34 @@ class VectorStore:
 
     def _get_embedding(self, text: str):
         # Generate embedding using GitHub Models (OpenAI-compatible)
-        response = self.embedding_client.embeddings.create(
-            input=[text], model=self.model_name
-        )
-        return response.data[0].embedding
+        try:
+            response = self.embedding_client.embeddings.create(
+                input=[text], model=self.model_name
+            )
+
+            if response.data is None:
+                logging.error("Embedding API returned None for data field")
+                raise ValueError("Embedding API returned None - check API key and endpoint")
+
+            return response.data[0].embedding
+        except Exception as e:
+            logging.error(f"Error generating embedding: {str(e)}")
+            raise
 
     def _get_embeddings_batch(self, texts: List[str]):
         """Generate embeddings for multiple texts in a single API call"""
-        # The API accepts up to 2048 texts at once, but we'll process all at once for now
-        response = self.embedding_client.embeddings.create(
-            input=texts, model=self.model_name
-        )
-        # Extract embeddings in the same order as input texts
-        return [item.embedding for item in response.data]
+        try:
+            # The API accepts up to 2048 texts at once, but we'll process all at once for now
+            response = self.embedding_client.embeddings.create(
+                input=texts, model=self.model_name
+            )
+
+            if response.data is None:
+                logging.error("Batch embedding API returned None for data field")
+                raise ValueError("Embedding API returned None - check API key and endpoint")
+
+            # Extract embeddings in the same order as input texts
+            return [item.embedding for item in response.data]
+        except Exception as e:
+            logging.error(f"Error generating batch embeddings: {str(e)}")
+            raise

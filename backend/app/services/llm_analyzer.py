@@ -28,21 +28,33 @@ class LLMAnalyzer:
 
         ## Calling OpenAI with function calling for structured output
 
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            tools=[self._get_analysis_function()],
-            tool_choice={"type": "function", "function": {"name": "provide_analysis"}},
-        )
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                tools=[self._get_analysis_function()],
+                tool_choice={"type": "function", "function": {"name": "provide_analysis"}},
+            )
 
-        # Extract the function call result
-        tool_call = response.choices[0].message.tool_calls[0]
-        analysis = json.loads(tool_call.function.arguments)
+            # Debug logging
+            logging.info(f"LLM API response type: {type(response)}")
 
-        return analysis
+            if not response.choices or not response.choices[0].message.tool_calls:
+                logging.error("LLM API returned invalid response structure")
+                raise ValueError("LLM API returned invalid response - check API key and endpoint")
+
+            # Extract the function call result
+            tool_call = response.choices[0].message.tool_calls[0]
+            analysis = json.loads(tool_call.function.arguments)
+
+            return analysis
+        except Exception as e:
+            logging.error(f"Error analyzing with LLM: {str(e)}")
+            logging.error(f"Error type: {type(e)}")
+            raise
 
     def _get_system_prompt(self) -> str:
         prompt = """You are an expert debugging assistant helping developers solve errors.
