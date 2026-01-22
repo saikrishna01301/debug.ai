@@ -17,7 +17,7 @@ const Header = () => (
         Intelligent Error Analysis with RAG-Powered Solutions
       </p>
       <p className="text-xs text-gray-600">
-        For now only python and javascript related errors are supported
+        Optimized for Python and JavaScript errors. Other languages fallback to LLM analysis.
       </p>
     </div>
   </div>
