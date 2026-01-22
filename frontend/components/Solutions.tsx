@@ -5,9 +5,10 @@ import SolutionCard from './SolutionCard';
 interface SolutionsProps {
   solutions: Solution[];
   sources_used: number;
+  analysisId: number;
 }
 
-const Solutions = ({ solutions, sources_used }: SolutionsProps) => (
+const Solutions = ({ solutions, sources_used, analysisId }: SolutionsProps) => (
   <div className="bg-white rounded-xl shadow-lg p-6">
     <div className="flex justify-between items-center mb-4">
       <h2 className="text-2xl font-bold text-gray-900">Solutions</h2>
@@ -18,7 +19,7 @@ const Solutions = ({ solutions, sources_used }: SolutionsProps) => (
 
     <div className="space-y-4">
       {solutions.map((solution, index) => (
-        <SolutionCard key={index} solution={solution} index={index} />
+        <SolutionCard key={index} solution={solution} index={index} analysisId={analysisId} />
       ))}
     </div>
   </div>

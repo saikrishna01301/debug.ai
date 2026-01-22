@@ -24,6 +24,54 @@ export interface AnalysisResult {
   analysis_id: number;
 }
 
+// Feedback API Types
+export interface FeedbackRequest {
+  analysis_id: number;
+  solution_index: number;
+  worked: boolean;
+  notes?: string;
+}
+
+export interface FeedbackResponse {
+  id: number;
+  analysis_id: number;
+  solution_index: number;
+  worked: boolean;
+  notes?: string;
+  created_at: string;
+}
+
+// Analytics API Types
+export interface AnalyticsOverview {
+  total_analyses: number;
+  total_errors_parsed: number;
+  avg_analysis_time_ms: number;
+  errors_by_language: { language: string; count: number }[];
+  feedback: {
+    total: number;
+    successful: number;
+    success_rate: number;
+  };
+}
+
+export interface LanguageBreakdown {
+  language: string;
+  total_errors: number;
+  avg_confidence: number;
+}
+
+export interface FeedbackStats {
+  total_feedback: number;
+  total_successful: number;
+  overall_success_rate: number;
+  solution_breakdown: {
+    solution_index: number;
+    total_feedback: number;
+    successful: number;
+    success_rate: number;
+  }[];
+}
+
 // Error response type
 export interface ApiError {
   message: string;
@@ -91,6 +139,58 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('Health check error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Submit feedback for a solution
+   */
+  async submitFeedback(feedback: FeedbackRequest): Promise<FeedbackResponse> {
+    try {
+      const response = await this.client.post<FeedbackResponse>('/api/feedback', feedback);
+      return response.data;
+    } catch (error) {
+      console.error('Feedback API error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get analytics overview
+   */
+  async getAnalyticsOverview(): Promise<AnalyticsOverview> {
+    try {
+      const response = await this.client.get<AnalyticsOverview>('/api/analytics/overview');
+      return response.data;
+    } catch (error) {
+      console.error('Analytics overview error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get language breakdown
+   */
+  async getLanguageBreakdown(): Promise<LanguageBreakdown[]> {
+    try {
+      const response = await this.client.get<LanguageBreakdown[]>('/api/analytics/language-breakdown');
+      return response.data;
+    } catch (error) {
+      console.error('Language breakdown error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get feedback stats
+   */
+  async getFeedbackStats(): Promise<FeedbackStats> {
+    try {
+      const response = await this.client.get<FeedbackStats>('/api/analytics/feedback-stats');
+      return response.data;
+    } catch (error) {
+      console.error('Feedback stats error:', error);
       throw error;
     }
   }

@@ -1,6 +1,7 @@
+from typing import Optional
 from app.db.base import Base
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, Integer, JSON, Text
+from sqlalchemy import String, Integer, JSON, Text, Boolean
 from datetime import datetime
 
 
@@ -45,4 +46,24 @@ class Analysis(Base):
     # Metadata
     sources_used: Mapped[int] = mapped_column(Integer, nullable=True)
     analysis_time: Mapped[int] = mapped_column(Integer, nullable=True)  # milliseconds
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    # Link to analysis
+    analysis_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Which solution did they try?
+    solution_index: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 0, 1, or 2
+
+    # Did it work?
+    worked: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+    # Optional user notes
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Metadata
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)

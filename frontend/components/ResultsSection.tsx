@@ -24,6 +24,7 @@ const ResultsSection = ({ result }: ResultsSectionProps) => (
     <Solutions
       solutions={result.solutions}
       sources_used={result.sources_used}
+      analysisId={result.analysis_id}
     />
   </div>
 );
