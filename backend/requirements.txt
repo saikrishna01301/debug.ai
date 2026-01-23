@@ -9,3 +9,4 @@ alembic==1.13.1
 supabase==2.3.0
 openai>=1.56.0
 httpx==0.24.1
+redis==5.0.1
