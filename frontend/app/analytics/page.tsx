@@ -1,26 +1,29 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { apiService, AnalyticsOverview, LanguageBreakdown, FeedbackStats } from '@/services/api';
+import { apiService, AnalyticsOverview, LanguageBreakdown, FeedbackStats, CacheStats } from '@/services/api';
 
 export default function AnalyticsPage() {
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [languages, setLanguages] = useState<LanguageBreakdown[]>([]);
   const [feedbackStats, setFeedbackStats] = useState<FeedbackStats | null>(null);
+  const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [overviewData, languageData, feedbackData] = await Promise.all([
+        const [overviewData, languageData, feedbackData, cacheData] = await Promise.all([
           apiService.getAnalyticsOverview(),
           apiService.getLanguageBreakdown(),
           apiService.getFeedbackStats(),
+          apiService.getCacheStats(),
         ]);
         setOverview(overviewData);
         setLanguages(languageData);
         setFeedbackStats(feedbackData);
+        setCacheStats(cacheData);
       } catch (err) {
         setError('Failed to load analytics data');
         console.error(err);
@@ -91,6 +94,37 @@ export default function AnalyticsPage() {
               {((overview?.feedback.success_rate || 0) * 100).toFixed(1)}%
             </p>
           </div>
+        </div>
+
+        {/* Cache Stats */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Cache Performance</h2>
+          {!cacheStats?.enabled ? (
+            <p className="text-gray-500">{cacheStats?.message || 'Caching is disabled'}</p>
+          ) : cacheStats?.error ? (
+            <p className="text-red-500">Error: {cacheStats.error}</p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <p className="text-2xl font-bold text-gray-900">{cacheStats?.total_keys || 0}</p>
+                <p className="text-sm text-gray-500">Cached Keys</p>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <p className="text-2xl font-bold text-green-600">{cacheStats?.hits || 0}</p>
+                <p className="text-sm text-gray-500">Cache Hits</p>
+              </div>
+              <div className="text-center p-4 bg-red-50 rounded-lg">
+                <p className="text-2xl font-bold text-red-600">{cacheStats?.misses || 0}</p>
+                <p className="text-sm text-gray-500">Cache Misses</p>
+              </div>
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <p className="text-2xl font-bold text-blue-600">
+                  {((cacheStats?.hit_rate || 0) * 100).toFixed(1)}%
+                </p>
+                <p className="text-sm text-gray-500">Hit Rate</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

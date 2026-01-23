@@ -10,6 +10,13 @@ interface ResultsSectionProps {
 
 const ResultsSection = ({ result }: ResultsSectionProps) => (
   <div className="space-y-6">
+    {result.analysis_time_ms && (
+      <div className="flex justify-end">
+        <span className="text-sm text-gray-500">
+          Analyzed in {result.analysis_time_ms}ms
+        </span>
+      </div>
+    )}
     <ErrorSummary
       language={result.language}
       error_type={result.error_type}

@@ -28,4 +28,5 @@ export interface AnalysisResult {
   solutions: Solution[];
   sources_used: number;
   analysis_id: number;
+  analysis_time_ms?: number;
 }

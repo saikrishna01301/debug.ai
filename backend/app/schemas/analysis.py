@@ -26,3 +26,4 @@ class AnalysisResponse(BaseModel):
     # Metadata
     sources_used: int
     analysis_id: Optional[int] = None
+    analysis_time_ms: Optional[int] = None

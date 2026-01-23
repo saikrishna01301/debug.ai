@@ -72,6 +72,16 @@ export interface FeedbackStats {
   }[];
 }
 
+export interface CacheStats {
+  enabled: boolean;
+  total_keys?: number;
+  hits?: number;
+  misses?: number;
+  hit_rate?: number;
+  message?: string;
+  error?: string;
+}
+
 // Error response type
 export interface ApiError {
   message: string;
@@ -191,6 +201,19 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('Feedback stats error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get cache stats
+   */
+  async getCacheStats(): Promise<CacheStats> {
+    try {
+      const response = await this.client.get<CacheStats>('/api/analytics/cache-stats');
+      return response.data;
+    } catch (error) {
+      console.error('Cache stats error:', error);
       throw error;
     }
   }
