@@ -8,12 +8,89 @@ An intelligent debugging assistant that analyzes error logs and provides AI-gene
 - **Backend API**: [https://debugai-production.up.railway.app/](https://debugai-production.up.railway.app/)
 - **API Docs**: [https://debugai-production.up.railway.app/docs](https://debugai-production.up.railway.app/docs)
 
+## Architecture Overview
+
+```mermaid
+graph TB
+    subgraph Frontend["Frontend (Next.js)"]
+        UI[Web UI]
+        API_CLIENT[API Service]
+    end
+
+    subgraph Backend["Backend (FastAPI)"]
+        ROUTER[API Router]
+        PARSER[Error Parser]
+        VECTOR[Vector Store]
+        LLM[LLM Analyzer]
+        CACHE[Redis Cache]
+        COST[Cost Tracker]
+    end
+
+    subgraph Database["Database (Supabase)"]
+        PG[(PostgreSQL)]
+        PGVECTOR[(pgvector)]
+    end
+
+    subgraph External["External Services"]
+        OPENAI[GitHub Models API]
+        SO[Stack Overflow Data]
+    end
+
+    UI --> API_CLIENT
+    API_CLIENT --> ROUTER
+    ROUTER --> CACHE
+    CACHE --> PARSER
+    PARSER --> VECTOR
+    VECTOR --> PGVECTOR
+    VECTOR --> LLM
+    LLM --> OPENAI
+    LLM --> COST
+    COST --> PG
+    PARSER --> PG
+    SO --> PG
+```
+
+## Analysis Pipeline
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant Cache
+    participant Parser
+    participant VectorStore
+    participant LLM
+    participant Database
+
+    User->>Frontend: Paste Error Log
+    Frontend->>Cache: Check Cache
+
+    alt Cache Hit
+        Cache-->>Frontend: Return Cached Analysis
+    else Cache Miss
+        Cache->>Parser: Parse Error
+        Parser->>Database: Store Parsed Error
+        Parser->>VectorStore: Search Similar Errors
+        VectorStore->>Database: Query pgvector
+        Database-->>VectorStore: Return Top K Results
+        VectorStore->>LLM: Analyze with Context
+        LLM->>Database: Track API Cost
+        LLM-->>Parser: Return Analysis
+        Parser->>Database: Store Analysis
+        Parser->>Cache: Cache Result (24h TTL)
+        Cache-->>Frontend: Return Analysis
+    end
+
+    Frontend-->>User: Display Solutions
+```
+
 ## Tech Stack
 
 - **Backend**: Python FastAPI
 - **Frontend**: Next.js 14 (TypeScript, React)
 - **Database**: Supabase (PostgreSQL with pgvector)
 - **Vector Store**: Supabase pgvector for embeddings
+- **Caching**: Redis (24h TTL for analyses)
 - **AI/LLM**: GitHub Models (Azure OpenAI)
   - GPT-4o-mini for error analysis
   - text-embedding-3-small for vector embeddings
@@ -28,6 +105,10 @@ An intelligent debugging assistant that analyzes error logs and provides AI-gene
 - **Batch Scraping**: Automated Stack Overflow scraping across multiple tags
 - **Vector Search**: Fast semantic search using Supabase pgvector
 - **Persistent Storage**: All errors and analyses stored in Supabase PostgreSQL
+- **Redis Caching**: Two-level cache for analyses and search results (24h TTL)
+- **Cost Tracking**: Real-time API cost monitoring with daily/operation breakdown
+- **Analytics Dashboard**: Comprehensive metrics including success rates, language breakdown, cache performance
+- **Feedback System**: User feedback collection to improve solution quality
 
 ## Project Structure
 
@@ -36,14 +117,26 @@ debugAi/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                      # FastAPI app & endpoints
+│   │   ├── api/
+│   │   │   ├── analyze.py               # Analysis endpoints
+│   │   │   ├── analytics.py             # Analytics & metrics endpoints
+│   │   │   └── feedback.py              # Feedback endpoints
 │   │   ├── db/
 │   │   │   ├── models/                  # SQLAlchemy models
+│   │   │   │   ├── error.py             # ParsedError, Analysis models
+│   │   │   │   ├── feedback.py          # Feedback model
+│   │   │   │   └── cost.py              # CostTracking model
 │   │   │   ├── crud/                    # Database operations
+│   │   │   │   ├── error_crud.py        # Error CRUD operations
+│   │   │   │   ├── feedback_crud.py     # Feedback CRUD operations
+│   │   │   │   └── cost_crud.py         # Cost tracking CRUD
 │   │   │   └── session.py               # DB session management
 │   │   ├── services/
 │   │   │   ├── parser.py                # Error log parsing
 │   │   │   ├── supabase_vector_store.py # Vector store operations
-│   │   │   └── llm_analyzer.py          # LLM error analysis
+│   │   │   ├── llm_analyzer.py          # LLM error analysis
+│   │   │   ├── cache.py                 # Redis caching service
+│   │   │   └── cost_tracker.py          # API cost tracking
 │   │   ├── schemas/                     # Pydantic models
 │   │   └── scripts/
 │   │       ├── scrape_stackoverflow.py  # SO scraper
@@ -55,6 +148,7 @@ debugAi/
 ├── frontend/
 │   ├── app/
 │   │   ├── page.tsx                     # Main UI
+│   │   ├── analytics/page.tsx           # Analytics dashboard
 │   │   └── layout.tsx
 │   ├── components/
 │   │   ├── InputSection.tsx             # Error input
@@ -98,6 +192,9 @@ debugAi/
 
    # GitHub Models API (for LLM and embeddings)
    GITHUB_TOKEN=github_pat_xxxxxxxxxxxxx
+
+   # Redis (optional - for caching)
+   REDIS_URL=redis://localhost:6379
 
    # CORS (comma-separated origins)
    ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
@@ -218,6 +315,28 @@ docker exec -it debugai-db psql -U debugai -d debugai_db
 
 ## API Endpoints
 
+```mermaid
+graph LR
+    subgraph Analysis
+        A1[POST /api/analyze]
+        A2[POST /api/feedback]
+    end
+
+    subgraph Analytics
+        B1[GET /api/analytics/overview]
+        B2[GET /api/analytics/language-breakdown]
+        B3[GET /api/analytics/feedback-stats]
+        B4[GET /api/analytics/cache-stats]
+        B5[GET /api/analytics/costs]
+    end
+
+    subgraph Data
+        C1[POST /api/scrape]
+        C2[POST /api/scrape/batch]
+        C3[POST /api/embeddings/create]
+    end
+```
+
 ### Core Endpoints
 
 - **POST /api/analyze** - Analyze error log and get AI-generated solutions
@@ -225,6 +344,16 @@ docker exec -it debugai-db psql -U debugai -d debugai_db
   {
     "query": "Traceback (most recent call last):\n  File \"app.py\"...",
     "limit": 5
+  }
+  ```
+
+- **POST /api/feedback** - Submit feedback on a solution
+  ```json
+  {
+    "analysis_id": 1,
+    "solution_index": 0,
+    "worked": true,
+    "notes": "Fixed my issue!"
   }
   ```
 
@@ -249,20 +378,54 @@ docker exec -it debugai-db psql -U debugai -d debugai_db
 
 - **GET /health** - Health check endpoint
 
+### Analytics Endpoints
+
+- **GET /api/analytics/overview** - System-wide analytics (total analyses, errors, avg time, success rate)
+- **GET /api/analytics/language-breakdown** - Error distribution by programming language
+- **GET /api/analytics/feedback-stats** - Feedback statistics with solution breakdown
+- **GET /api/analytics/cache-stats** - Redis cache performance metrics
+- **GET /api/analytics/costs?days=30** - API cost tracking with daily breakdown
+
 ## How It Works
 
+```mermaid
+flowchart TD
+    A[User Pastes Error Log] --> B{Check Redis Cache}
+    B -->|Cache Hit| C[Return Cached Analysis]
+    B -->|Cache Miss| D[Parse Error Log]
+    D --> E[Extract Error Type, Message, Stack Trace]
+    E --> F[Store Parsed Error in DB]
+    F --> G[Vector Search in pgvector]
+    G --> H[Retrieve Top K Similar Posts]
+    H --> I[Build RAG Context]
+    I --> J[Send to GPT-4o-mini]
+    J --> K[Track API Cost]
+    K --> L[Generate Analysis]
+    L --> M[Store Analysis in DB]
+    M --> N[Cache Result - 24h TTL]
+    N --> O[Return to Frontend]
+    C --> O
+    O --> P[Display Solutions with Syntax Highlighting]
+    P --> Q{User Feedback}
+    Q -->|Worked/Didn't Work| R[Store Feedback]
+```
+
 1. **User Input**: Paste error log into the frontend
-2. **Error Parsing**: Backend extracts error type, message, stack trace, file path, and line number
-3. **Vector Search**: Searches Stack Overflow knowledge base using semantic similarity
-4. **RAG Context**: Top 3-5 most relevant posts are retrieved (distance threshold: 0.6)
-5. **LLM Analysis**: GPT-4o-mini analyzes error with context and generates:
+2. **Cache Check**: Check Redis for cached analysis (24h TTL)
+3. **Error Parsing**: Backend extracts error type, message, stack trace, file path, and line number
+4. **Vector Search**: Searches Stack Overflow knowledge base using semantic similarity
+5. **RAG Context**: Top 3-5 most relevant posts are retrieved (distance threshold: 0.6)
+6. **LLM Analysis**: GPT-4o-mini analyzes error with context and generates:
    - Root cause explanation
    - Step-by-step reasoning
    - 2-3 ranked solutions with code examples
    - Confidence scores (0-1)
    - Source URLs from Stack Overflow
-6. **Database Storage**: Error and analysis are stored in Supabase
-7. **Response**: Frontend displays solutions with syntax-highlighted code
+7. **Cost Tracking**: API usage and costs are logged for monitoring
+8. **Database Storage**: Error and analysis are stored in Supabase
+9. **Caching**: Result is cached in Redis for 24 hours
+10. **Response**: Frontend displays solutions with syntax-highlighted code
+11. **Feedback**: Users can provide feedback on solution effectiveness
 
 See [APPLICATION_FLOW.md](APPLICATION_FLOW.md) for detailed flow documentation.
 
@@ -310,6 +473,81 @@ npm run dev
 
 ## Database Schema
 
+```mermaid
+erDiagram
+    PARSED_ERRORS ||--o{ ANALYSES : has
+    ANALYSES ||--o{ FEEDBACK : receives
+    STACKOVERFLOW_POSTS ||--o{ EMBEDDINGS : generates
+    COST_TRACKING
+
+    PARSED_ERRORS {
+        int id PK
+        text raw_error_log
+        string error_type
+        string error_message
+        string language
+        string framework
+        string file_name
+        int line_number
+        string function_name
+        jsonb stack_trace
+        float confidence_score
+        timestamp created_at
+    }
+
+    ANALYSES {
+        int id PK
+        int parsed_error_id FK
+        text root_cause
+        text reasoning
+        jsonb solutions
+        int sources_used
+        int analysis_time
+        timestamp created_at
+    }
+
+    FEEDBACK {
+        int id PK
+        int analysis_id FK
+        int solution_index
+        boolean worked
+        text notes
+        timestamp created_at
+    }
+
+    STACKOVERFLOW_POSTS {
+        int id PK
+        int question_id
+        string title
+        text question_body
+        text answer_body
+        array tags
+        int votes
+        string url
+        timestamp created_at
+        timestamp scraped_at
+    }
+
+    EMBEDDINGS {
+        int id PK
+        text content
+        vector embedding
+        jsonb metadata
+        timestamp created_at
+    }
+
+    COST_TRACKING {
+        int id PK
+        string operation
+        string model
+        float cost
+        int prompt_tokens
+        int completion_tokens
+        int total_tokens
+        timestamp created_at
+    }
+```
+
 ### Tables
 
 **parsed_errors**
@@ -318,7 +556,11 @@ npm run dev
 
 **analyses**
 - Stores LLM-generated analysis results
-- Fields: id, parsed_error_id (FK), root_cause, reasoning, solutions (JSONB), sources_used, created_at
+- Fields: id, parsed_error_id (FK), root_cause, reasoning, solutions (JSONB), sources_used, analysis_time, created_at
+
+**feedback**
+- Stores user feedback on solutions
+- Fields: id, analysis_id (FK), solution_index, worked, notes, created_at
 
 **stackoverflow_posts**
 - Stores scraped Stack Overflow posts
@@ -327,6 +569,10 @@ npm run dev
 **embeddings** (Supabase pgvector)
 - Stores vector embeddings for semantic search
 - Fields: id, content, embedding (vector), metadata (JSONB), created_at
+
+**cost_tracking**
+- Stores API cost records for monitoring
+- Fields: id, operation, model, cost, prompt_tokens, completion_tokens, total_tokens, created_at
 
 ### Database Management
 
@@ -385,20 +631,47 @@ ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
 
 | Stage | Typical Duration | Notes |
 |-------|------------------|-------|
+| Cache Check | 1-5ms | Redis lookup |
 | Parse Error | 10-50ms | Regex-based, very fast |
 | Vector Search | 50-200ms | Depends on collection size |
 | DB Insert (Error) | 20-100ms | Async operation |
 | LLM Analysis | 2-5 seconds | Main bottleneck |
 | DB Insert (Analysis) | 20-100ms | Async operation |
-| **Total** | **2.5-6 seconds** | End-to-end |
+| Cache Write | 1-5ms | Redis set with TTL |
+| **Total (Cache Miss)** | **2.5-6 seconds** | Full pipeline |
+| **Total (Cache Hit)** | **5-20ms** | Cached response |
 
 ## Architecture Highlights
 
+```mermaid
+graph TB
+    subgraph Caching Layer
+        REDIS[Redis Cache]
+        L1[Analysis Cache<br/>24h TTL]
+        L2[Search Cache<br/>24h TTL]
+    end
+
+    subgraph Cost Management
+        CT[Cost Tracker]
+        CM[Cost Model]
+    end
+
+    REDIS --> L1
+    REDIS --> L2
+    CT --> CM
+
+    style REDIS fill:#dc382d,color:#fff
+    style CT fill:#22c55e,color:#fff
+```
+
 - **RAG (Retrieval-Augmented Generation)**: Combines semantic search with LLM generation for context-aware solutions
 - **Vector Search**: Uses pgvector for fast semantic similarity search
+- **Two-Level Caching**: Redis cache for analyses and search results with 24-hour TTL
+- **Cost Tracking**: Real-time monitoring of API costs with breakdown by operation
 - **Async Operations**: FastAPI async endpoints with SQLAlchemy async for better performance
 - **Structured Output**: Uses OpenAI function calling for reliable JSON responses
-- **Multi-stage Pipeline**: Parse → Search → Analyze → Store
+- **Multi-stage Pipeline**: Cache Check → Parse → Search → Analyze → Store → Cache
+- **Feedback Loop**: User feedback collection for continuous improvement
 
 ## Technologies Used
 
@@ -406,6 +679,7 @@ ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
 - **Next.js 14**: React framework with server-side rendering
 - **SQLAlchemy**: Python ORM with async support
 - **Supabase**: PostgreSQL with pgvector extension
+- **Redis**: In-memory caching for analyses and search results
 - **GitHub Models**: Azure OpenAI endpoints (GPT-4o-mini, text-embedding-3-small)
 - **Docker**: Containerization for consistent environments
 - **Railway**: Backend deployment platform
@@ -437,5 +711,5 @@ ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
 
 ---
 
-**Last Updated**: 2026-01-16
-**Version**: 1.0
+**Last Updated**: 2026-01-23
+**Version**: 1.1
