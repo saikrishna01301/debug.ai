@@ -6,6 +6,7 @@ from app.db import get_session, Feedback
 from app.db.models import ParsedError, Analysis
 
 from app.services.cache import CacheService
+from app.services.cost_tracker import get_total_cost, get_daily_costs, get_cost_breakdown
 
 router = APIRouter()
 cache = CacheService()
@@ -92,3 +93,21 @@ async def get_cache_stats():
     Get cache statistics
     """
     return cache.get_stats()
+
+
+@router.get("/analytics/costs")
+async def get_costs_overview(
+    days: int = 30, session: AsyncSession = Depends(get_session)
+):
+    """
+    Get cost analytics overview
+    """
+    total = await get_total_cost(session, days)
+    breakdown = await get_cost_breakdown(session, days)
+    daily = await get_daily_costs(session, min(days, 7))
+
+    return {
+        "total_cost": total,
+        "breakdown": breakdown,
+        "daily": daily,
+    }

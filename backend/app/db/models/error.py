@@ -1,8 +1,8 @@
 from typing import Optional
 from app.db.base import Base
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, Integer, JSON, Text, Boolean
-from datetime import datetime
+from sqlalchemy import String, Integer, JSON, Text, Boolean, Float, DateTime
+from datetime import datetime, timezone
 
 
 class ParsedError(Base):
@@ -29,6 +29,9 @@ class ParsedError(Base):
     confidence_score: Mapped[int] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
+    def __repr__(self):
+        return f"<ParsedError(id={self.id}, type={self.error_type})>"
+
 
 class Analysis(Base):
     __tablename__ = "analyses"
@@ -48,6 +51,9 @@ class Analysis(Base):
     analysis_time: Mapped[int] = mapped_column(Integer, nullable=True)  # milliseconds
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
+    def __repr__(self):
+        return f"<Analysis(id={self.id}, error_id={self.parsed_error_id})>"
+
 
 class Feedback(Base):
     __tablename__ = "feedback"
@@ -57,7 +63,9 @@ class Feedback(Base):
     analysis_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Which solution did they try?
-    solution_index: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 0, 1, or 2
+    solution_index: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )  # 0, 1, or 2
 
     # Did it work?
     worked: Mapped[bool] = mapped_column(Boolean, nullable=False)
@@ -67,3 +75,34 @@ class Feedback(Base):
 
     # Metadata
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Feedback(id={self.id}, analysis_id={self.analysis_id}, worked={self.worked})>"
+
+
+class CostTracking(Base):
+    __tablename__ = "cost_tracking"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    # What operation?
+    operation: Mapped[str] = mapped_column(
+        String
+    )  # 'embedding', 'analysis', 'baseline_eval'
+
+    # Token usage
+    prompt_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    completion_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    total_tokens: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Cost (in USD)
+    cost: Mapped[float] = mapped_column(Float)
+
+    # Model used
+    model: Mapped[str] = mapped_column()
+
+    # Metadata
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<CostTracking(operation={self.operation}, cost=${self.cost:.4f})>"

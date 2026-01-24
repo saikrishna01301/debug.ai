@@ -82,6 +82,24 @@ export interface CacheStats {
   error?: string;
 }
 
+export interface CostBreakdown {
+  operation: string;
+  count: number;
+  total_cost: number;
+  total_tokens: number;
+}
+
+export interface DailyCost {
+  date: string;
+  cost: number;
+}
+
+export interface CostStats {
+  total_cost: number;
+  breakdown: CostBreakdown[];
+  daily: DailyCost[];
+}
+
 // Error response type
 export interface ApiError {
   message: string;
@@ -214,6 +232,19 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('Cache stats error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get cost stats
+   */
+  async getCostStats(days: number = 30): Promise<CostStats> {
+    try {
+      const response = await this.client.get<CostStats>(`/api/analytics/costs?days=${days}`);
+      return response.data;
+    } catch (error) {
+      console.error('Cost stats error:', error);
       throw error;
     }
   }

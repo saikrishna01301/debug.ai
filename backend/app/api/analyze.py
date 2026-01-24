@@ -105,7 +105,7 @@ async def analyze_error(
     # Store parsed error in database
     db_error = await create_parsed_error(session, parsed_error)
 
-    llm_response = llm.analyze_error(parsed_error, search_results_dicts)
+    llm_response = await llm.analyze_error(parsed_error, search_results_dicts, session)
 
     # Store analysis in database
     analysis_data = {

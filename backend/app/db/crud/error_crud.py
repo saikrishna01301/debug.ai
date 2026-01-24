@@ -2,7 +2,9 @@ from app.db.models.error import ParsedError, Analysis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-async def create_parsed_error(session: AsyncSession, parsed_error_data: dict) -> ParsedError:
+async def create_parsed_error(
+    session: AsyncSession, parsed_error_data: dict
+) -> ParsedError:
     """Create a new parsed error in the database"""
     # Map the parsed_error dictionary to the ParsedError model fields
     error_data = {
@@ -11,7 +13,9 @@ async def create_parsed_error(session: AsyncSession, parsed_error_data: dict) ->
         "error_message": parsed_error_data.get("error_message", ""),
         "language": parsed_error_data.get("language"),
         "framework": parsed_error_data.get("framework"),
-        "file_name": parsed_error_data.get("file_path"),  # Note: using file_path from parser
+        "file_name": parsed_error_data.get(
+            "file_path"
+        ),  # Note: using file_path from parser
         "line_number": parsed_error_data.get("line_number"),
         "function_name": parsed_error_data.get("function_name"),
         "stack_trace": parsed_error_data.get("stack_trace"),

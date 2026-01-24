@@ -2,9 +2,12 @@ import logging
 import os
 import json
 from typing import List, Dict
-from openai import OpenAI
+from openai import AsyncOpenAI
 from sqlalchemy import text
 from app.db.session import get_session
+from app.services.cost_tracker import CostTracker
+
+cost_tracker = CostTracker()
 
 
 class SupabaseVectorStore:
@@ -20,10 +23,12 @@ class SupabaseVectorStore:
             raise ValueError("GITHUB_TOKEN is required but not found in environment")
 
         # Log token prefix for debugging (never log the full token)
-        token_prefix = github_token[:20] if len(github_token) > 20 else github_token[:10]
+        token_prefix = (
+            github_token[:20] if len(github_token) > 20 else github_token[:10]
+        )
         logging.info(f"Initializing with GitHub token prefix: {token_prefix}...")
 
-        self.embedding_client = OpenAI(
+        self.embedding_client = AsyncOpenAI(
             base_url="https://models.inference.ai.azure.com",
             api_key=github_token,
         )
@@ -39,23 +44,24 @@ class SupabaseVectorStore:
             metadata: Dict with source, url, tags, etc.
             doc_id: Unique identifier
         """
-        # Generate embedding
-        embedding = self._get_embedding(text)
-
-        # Convert embedding list to PostgreSQL array format
-        embedding_str = f"[{','.join(map(str, embedding))}]"
-        metadata_json = json.dumps(metadata)
-
         # Store in Supabase using raw SQL
         async for session in get_session():
-            query = text("""
+            # Generate embedding (needs session for cost tracking)
+            embedding = await self._get_embedding(text, session)
+
+            # Convert embedding list to PostgreSQL array format
+            embedding_str = f"[{','.join(map(str, embedding))}]"
+            metadata_json = json.dumps(metadata)
+            query = text(
+                """
                 INSERT INTO embeddings (id, content, embedding, metadata)
                 VALUES (:id, :content, CAST(:embedding AS vector), CAST(:metadata AS jsonb))
                 ON CONFLICT (id) DO UPDATE SET
                     content = EXCLUDED.content,
                     embedding = EXCLUDED.embedding,
                     metadata = EXCLUDED.metadata
-            """)
+            """
+            )
 
             await session.execute(
                 query,
@@ -63,8 +69,8 @@ class SupabaseVectorStore:
                     "id": doc_id,
                     "content": text,
                     "embedding": embedding_str,
-                    "metadata": metadata_json
-                }
+                    "metadata": metadata_json,
+                },
             )
             await session.commit()
 
@@ -76,23 +82,26 @@ class SupabaseVectorStore:
         """Add multiple documents at once (more efficient)"""
         logging.info(f"Generating embeddings for {len(texts)} documents")
 
-        # Generate embeddings for all texts in one API call
-        embeddings = self._get_embeddings_batch(texts)
-
         # Prepare batch insert
         async for session in get_session():
-            for doc_id, text_content, embedding, metadata in zip(ids, texts, embeddings, metadatas):
+            # Generate embeddings for all texts in one API call (needs session for cost tracking)
+            embeddings = await self._get_embeddings_batch(texts, session)
+            for doc_id, text_content, embedding, metadata in zip(
+                ids, texts, embeddings, metadatas
+            ):
                 embedding_str = f"[{','.join(map(str, embedding))}]"
                 metadata_json = json.dumps(metadata)
 
-                query = text("""
+                query = text(
+                    """
                     INSERT INTO embeddings (id, content, embedding, metadata)
                     VALUES (:id, :content, CAST(:embedding AS vector), CAST(:metadata AS jsonb))
                     ON CONFLICT (id) DO UPDATE SET
                         content = EXCLUDED.content,
                         embedding = EXCLUDED.embedding,
                         metadata = EXCLUDED.metadata
-                """)
+                """
+                )
 
                 await session.execute(
                     query,
@@ -100,15 +109,17 @@ class SupabaseVectorStore:
                         "id": doc_id,
                         "content": text_content,
                         "embedding": embedding_str,
-                        "metadata": metadata_json
-                    }
+                        "metadata": metadata_json,
+                    },
                 )
 
             await session.commit()
 
         logging.info(f"Added {len(texts)} documents to Supabase vector store")
 
-    async def search(self, query: str, n_results: int = 5, filter_metadata: Dict = None):
+    async def search(
+        self, query: str, n_results: int = 5, filter_metadata: Dict = None
+    ):
         """
         Semantic search using cosine similarity
 
@@ -120,14 +131,14 @@ class SupabaseVectorStore:
         Returns:
             Dict with documents, metadatas, and distances (compatible with ChromaDB format)
         """
-        # Generate embedding for query
-        query_embedding = self._get_embedding(query)
-        embedding_str = f"[{','.join(map(str, query_embedding))}]"
-
         # Search using cosine distance (1 - cosine_similarity)
         # Lower distance = more similar
         async for session in get_session():
-            query_sql = text("""
+            # Generate embedding for query (needs session for cost tracking)
+            query_embedding = await self._get_embedding(query, session)
+            embedding_str = f"[{','.join(map(str, query_embedding))}]"
+            query_sql = text(
+                """
                 SELECT
                     id,
                     content,
@@ -137,14 +148,11 @@ class SupabaseVectorStore:
                 FROM embeddings
                 ORDER BY embedding <=> CAST(:query_embedding AS vector)
                 LIMIT :limit
-            """)
+            """
+            )
 
             result = await session.execute(
-                query_sql,
-                {
-                    "query_embedding": embedding_str,
-                    "limit": n_results
-                }
+                query_sql, {"query_embedding": embedding_str, "limit": n_results}
             )
 
             rows = result.fetchall()
@@ -159,7 +167,7 @@ class SupabaseVectorStore:
                 "documents": documents,
                 "metadatas": metadatas,
                 "distances": distances,
-                "ids": ids
+                "ids": ids,
             }
 
     async def get_stats(self):
@@ -168,15 +176,12 @@ class SupabaseVectorStore:
             result = await session.execute(text("SELECT COUNT(*) FROM embeddings"))
             count = result.scalar()
 
-            return {
-                "total_documents": count,
-                "store_type": "supabase_pgvector"
-            }
+            return {"total_documents": count, "store_type": "supabase_pgvector"}
 
-    def _get_embedding(self, text: str):
+    async def _get_embedding(self, text: str, session):
         """Generate embedding using GitHub Models (OpenAI-compatible)"""
         try:
-            response = self.embedding_client.embeddings.create(
+            response = await self.embedding_client.embeddings.create(
                 input=[text], model=self.model_name
             )
 
@@ -184,9 +189,16 @@ class SupabaseVectorStore:
             logging.info(f"Embedding API response type: {type(response)}")
             logging.info(f"Embedding API response: {response}")
 
+            if response:
+                # single embedding cost tracking
+                actual_tokens = response.usage.total_tokens
+                await cost_tracker.track_embedding(session, actual_tokens)
+
             if response.data is None:
                 logging.error("Embedding API returned None for data field")
-                raise ValueError("Embedding API returned None - check API key and endpoint")
+                raise ValueError(
+                    "Embedding API returned None - check API key and endpoint"
+                )
 
             return response.data[0].embedding
         except Exception as e:
@@ -194,16 +206,23 @@ class SupabaseVectorStore:
             logging.error(f"Error type: {type(e)}")
             raise
 
-    def _get_embeddings_batch(self, texts: List[str]):
+    async def _get_embeddings_batch(self, texts: List[str], session):
         """Generate embeddings for multiple texts in a single API call"""
         try:
-            response = self.embedding_client.embeddings.create(
+            response = await self.embedding_client.embeddings.create(
                 input=texts, model=self.model_name
             )
 
+            if response:
+                # batch embeddings cost tracking
+                actual_tokens = response.usage.total_tokens
+                await cost_tracker.track_embedding(session, actual_tokens)
+
             if response.data is None:
                 logging.error("Batch embedding API returned None for data field")
-                raise ValueError("Embedding API returned None - check API key and endpoint")
+                raise ValueError(
+                    "Embedding API returned None - check API key and endpoint"
+                )
 
             return [item.embedding for item in response.data]
         except Exception as e:

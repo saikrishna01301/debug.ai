@@ -52,8 +52,8 @@ class CacheService:
             return None
 
     # Cache an analysis result
-    # 1 hour default time
-    def set_analysis(self, error_log: str, analysis: dict, ttl: int = 3600):
+    # 24 hours default time
+    def set_analysis(self, error_log: str, analysis: dict, ttl: int = 86400):
         if not self.enabled:
             return None
 
@@ -93,7 +93,7 @@ class CacheService:
         self,
         query: str,
         results: Dict,
-        ttl: int = 7200,  # 2 hours default time to leave
+        ttl: int = 86400,  # 2 hours default time to leave
     ):
         """
         Cache search results

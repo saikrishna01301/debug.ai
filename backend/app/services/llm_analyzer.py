@@ -1,8 +1,12 @@
 import json
 import logging
 import os
-from openai import OpenAI
+from openai import AsyncOpenAI
 from typing import List, Dict
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.services.cost_tracker import CostTracker
+
+cost_tracker = CostTracker()
 
 
 class LLMAnalyzer:
@@ -10,15 +14,15 @@ class LLMAnalyzer:
     def __init__(self):
         # Initialize OpenAI client for GitHub Models (Azure)
         github_token = os.getenv("GITHUB_TOKEN", "").strip()
-        self.client = OpenAI(
+        self.client = AsyncOpenAI(
             base_url="https://models.inference.ai.azure.com",
             api_key=github_token,
         )
         self.model = "gpt-4o-mini"  # Much faster and cheaper than gpt-4o
 
-    # search_results = []
-    def analyze_error(self, parsed_error: Dict, search_results: List[Dict]) -> Dict:
-
+    async def analyze_error(
+        self, parsed_error: Dict, search_results: List[Dict], session: AsyncSession
+    ) -> Dict:
         # build context from search_results to pass in LLM
         context = self._build_context(search_results)
 
@@ -29,7 +33,7 @@ class LLMAnalyzer:
         ## Calling OpenAI with function calling for structured output
 
         try:
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -41,6 +45,15 @@ class LLMAnalyzer:
 
             # Debug logging
             logging.info(f"LLM API response type: {type(response)}")
+
+            # Track cost
+            if response.usage:
+                await cost_tracker.track_analysis(
+                    session=session,
+                    prompt_tokens=response.usage.prompt_tokens,
+                    completion_tokens=response.usage.completion_tokens,
+                    model=self.model,
+                )
 
             if not response.choices or not response.choices[0].message.tool_calls:
                 logging.error("LLM API returned invalid response structure")

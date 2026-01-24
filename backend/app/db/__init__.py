@@ -1,5 +1,5 @@
 from .base import Base
-from .models import ParsedError, StackOverFlowPost, Feedback  # noqa: F401
+from .models import ParsedError, StackOverFlowPost, Feedback, CostTracking  # noqa: F401
 from .session import init_db, get_session, sessionLocal, engine  # noqa: F401
 
 
@@ -12,4 +12,5 @@ __all__ = [
     "ParsedError",
     "StackOverFlowPost",
     "Feedback",
+    "CostTracking",
 ]

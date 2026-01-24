@@ -1,29 +1,32 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { apiService, AnalyticsOverview, LanguageBreakdown, FeedbackStats, CacheStats } from '@/services/api';
+import { apiService, AnalyticsOverview, LanguageBreakdown, FeedbackStats, CacheStats, CostStats } from '@/services/api';
 
 export default function AnalyticsPage() {
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [languages, setLanguages] = useState<LanguageBreakdown[]>([]);
   const [feedbackStats, setFeedbackStats] = useState<FeedbackStats | null>(null);
   const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
+  const [costStats, setCostStats] = useState<CostStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [overviewData, languageData, feedbackData, cacheData] = await Promise.all([
+        const [overviewData, languageData, feedbackData, cacheData, costData] = await Promise.all([
           apiService.getAnalyticsOverview(),
           apiService.getLanguageBreakdown(),
           apiService.getFeedbackStats(),
           apiService.getCacheStats(),
+          apiService.getCostStats(),
         ]);
         setOverview(overviewData);
         setLanguages(languageData);
         setFeedbackStats(feedbackData);
         setCacheStats(cacheData);
+        setCostStats(costData);
       } catch (err) {
         setError('Failed to load analytics data');
         console.error(err);
@@ -122,6 +125,48 @@ export default function AnalyticsPage() {
                   {((cacheStats?.hit_rate || 0) * 100).toFixed(1)}%
                 </p>
                 <p className="text-sm text-gray-500">Hit Rate</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Cost Tracking */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">API Cost Tracking (Last 30 Days)</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <p className="text-2xl font-bold text-green-600">
+                ${costStats?.total_cost?.toFixed(4) || '0.0000'}
+              </p>
+              <p className="text-sm text-gray-500">Total Cost</p>
+            </div>
+            {costStats?.breakdown?.map((item) => (
+              <div key={item.operation} className="text-center p-4 bg-blue-50 rounded-lg">
+                <p className="text-2xl font-bold text-blue-600">
+                  ${item.total_cost.toFixed(4)}
+                </p>
+                <p className="text-sm text-gray-500 capitalize">{item.operation} ({item.count} calls)</p>
+                <p className="text-xs text-gray-400">{item.total_tokens.toLocaleString()} tokens</p>
+              </div>
+            ))}
+          </div>
+          {costStats?.daily && costStats.daily.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">Daily Costs (Last 7 Days)</h3>
+              <div className="flex items-end justify-between gap-2 h-32">
+                {costStats.daily.map((day) => (
+                  <div key={day.date} className="flex-1 flex flex-col items-center">
+                    <div
+                      className="w-full bg-blue-500 rounded-t"
+                      style={{
+                        height: `${Math.max((day.cost / Math.max(...costStats.daily.map(d => d.cost))) * 100, 5)}%`,
+                        minHeight: '4px'
+                      }}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">{new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}</p>
+                    <p className="text-xs text-gray-400">${day.cost.toFixed(4)}</p>
+                  </div>
+                ))}
               </div>
             </div>
           )}
