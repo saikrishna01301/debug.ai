@@ -7,6 +7,15 @@ from app.db.crud.cost_crud import (
     cost_breakdown,
     daily_costs,
 )
+from app.db.crud.analytics_crud import (
+    get_total_analyses,
+    get_total_errors,
+    get_errors_by_language,
+    get_avg_analysis_time,
+    get_total_feedback,
+    get_successful_feedback,
+    get_language_breakdown,
+)
 
 __all__ = [
     "post_exists",
@@ -19,4 +28,11 @@ __all__ = [
     "total_cost",
     "cost_breakdown",
     "daily_costs",
+    "get_total_analyses",
+    "get_total_errors",
+    "get_errors_by_language",
+    "get_avg_analysis_time",
+    "get_total_feedback",
+    "get_successful_feedback",
+    "get_language_breakdown",
 ]

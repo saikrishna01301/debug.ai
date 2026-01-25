@@ -1,4 +1,19 @@
 services:
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: debugai-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # FastAPI Backend (connects to Supabase cloud database)
   backend:
     build:
@@ -16,9 +31,13 @@ services:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - STACKEXCHANGE_API_KEY=${STACKEXCHANGE_API_KEY}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
+      - REDIS_URL=redis://redis:6379
     volumes:
       - ./backend:/app
       - /app/__pycache__
+    depends_on:
+      redis:
+        condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   # Next.js Frontend
@@ -38,3 +57,6 @@ services:
     depends_on:
       - backend
     command: npm run dev
+
+volumes:
+  redis_data:

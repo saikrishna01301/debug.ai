@@ -20,8 +20,7 @@ async def get_total_errors(session: AsyncSession) -> int:
 async def get_errors_by_language(session: AsyncSession) -> list:
     """Get error count grouped by programming language"""
     query = select(
-        ParsedError.language,
-        func.count(ParsedError.id).label('count')
+        ParsedError.language, func.count(ParsedError.id).label("count")
     ).group_by(ParsedError.language)
     result = await session.execute(query)
     return result.all()
@@ -51,8 +50,8 @@ async def get_language_breakdown(session: AsyncSession) -> list:
     """Get detailed breakdown by programming language with confidence scores"""
     query = select(
         ParsedError.language,
-        func.count(ParsedError.id).label('total_errors'),
-        func.avg(ParsedError.confidence_score).label('avg_confidence')
+        func.count(ParsedError.id).label("total_errors"),
+        func.avg(ParsedError.confidence_score).label("avg_confidence"),
     ).group_by(ParsedError.language)
     result = await session.execute(query)
     return result.all()

@@ -1,10 +1,16 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import func, select
 
-from app.db import get_session, Feedback
-from app.db.models import ParsedError, Analysis
-
+from app.db import get_session
+from app.db.crud import (
+    get_total_analyses,
+    get_total_errors,
+    get_errors_by_language,
+    get_avg_analysis_time,
+    get_total_feedback,
+    get_successful_feedback,
+    get_language_breakdown,
+)
 from app.services.cache import CacheService
 from app.services.cost_tracker import get_total_cost, get_daily_costs, get_cost_breakdown
 
@@ -17,33 +23,12 @@ async def get_analytics_overview(session: AsyncSession = Depends(get_session)):
     """
     Get overall system analytics
     """
-    # Total analyses
-    total_analyses_result = await session.execute(select(func.count(Analysis.id)))
-    total_analyses = total_analyses_result.scalar()
-
-    # Total errors parsed
-    total_errors_result = await session.execute(select(func.count(ParsedError.id)))
-    total_errors = total_errors_result.scalar()
-
-    # Errors by language
-    errors_by_language_query = select(
-        ParsedError.language, func.count(ParsedError.id).label("count")
-    ).group_by(ParsedError.language)
-    errors_by_language_result = await session.execute(errors_by_language_query)
-    errors_by_language = errors_by_language_result.all()
-
-    # Average analysis time
-    avg_time_result = await session.execute(select(func.avg(Analysis.analysis_time)))
-    avg_analysis_time = avg_time_result.scalar() or 0
-
-    # Feedback stats
-    total_feedback_result = await session.execute(select(func.count(Feedback.id)))
-    total_feedback = total_feedback_result.scalar()
-
-    successful_feedback_result = await session.execute(
-        select(func.count(Feedback.id)).where(Feedback.worked == True)
-    )
-    successful_feedback = successful_feedback_result.scalar()
+    total_analyses = await get_total_analyses(session)
+    total_errors = await get_total_errors(session)
+    errors_by_language = await get_errors_by_language(session)
+    avg_analysis_time = await get_avg_analysis_time(session)
+    total_feedback = await get_total_feedback(session)
+    successful_feedback = await get_successful_feedback(session)
 
     return {
         "total_analyses": total_analyses,
@@ -64,18 +49,11 @@ async def get_analytics_overview(session: AsyncSession = Depends(get_session)):
 
 
 @router.get("/analytics/language-breakdown")
-async def get_language_breakdown(session: AsyncSession = Depends(get_session)):
+async def get_language_breakdown_endpoint(session: AsyncSession = Depends(get_session)):
     """
     Get detailed breakdown by programming language
     """
-    breakdown_query = select(
-        ParsedError.language,
-        func.count(ParsedError.id).label("total_errors"),
-        func.avg(ParsedError.confidence_score).label("avg_confidence"),
-    ).group_by(ParsedError.language)
-
-    breakdown_result = await session.execute(breakdown_query)
-    breakdown = breakdown_result.all()
+    breakdown = await get_language_breakdown(session)
 
     return [
         {

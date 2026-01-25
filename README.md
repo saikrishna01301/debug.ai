@@ -120,7 +120,11 @@ debugAi/
 │   │   ├── api/
 │   │   │   ├── analyze.py               # Analysis endpoints
 │   │   │   ├── analytics.py             # Analytics & metrics endpoints
-│   │   │   └── feedback.py              # Feedback endpoints
+│   │   │   ├── feedback.py              # Feedback endpoints
+│   │   │   ├── cost_routes.py           # Cost tracking endpoints
+│   │   │   ├── embeddings_routes.py     # Embeddings endpoints
+│   │   │   └── scrape_routes.py         # Scraping endpoints
+│   │   ├── core/                        # Core configuration
 │   │   ├── db/
 │   │   │   ├── models/                  # SQLAlchemy models
 │   │   │   │   ├── error.py             # ParsedError, Analysis models
@@ -129,7 +133,8 @@ debugAi/
 │   │   │   ├── crud/                    # Database operations
 │   │   │   │   ├── error_crud.py        # Error CRUD operations
 │   │   │   │   ├── feedback_crud.py     # Feedback CRUD operations
-│   │   │   │   └── cost_crud.py         # Cost tracking CRUD
+│   │   │   │   ├── cost_crud.py         # Cost tracking CRUD
+│   │   │   │   └── analytics_crud.py    # Analytics CRUD operations
 │   │   │   └── session.py               # DB session management
 │   │   ├── services/
 │   │   │   ├── parser.py                # Error log parsing
@@ -138,10 +143,11 @@ debugAi/
 │   │   │   ├── cache.py                 # Redis caching service
 │   │   │   └── cost_tracker.py          # API cost tracking
 │   │   ├── schemas/                     # Pydantic models
-│   │   └── scripts/
-│   │       ├── scrape_stackoverflow.py  # SO scraper
-│   │       ├── batch_scrape.py          # Batch scraping
-│   │       └── create_embeddings.py     # Generate embeddings
+│   │   ├── scripts/
+│   │   │   ├── scrape_stackoverflow.py  # SO scraper
+│   │   │   ├── batch_scrape.py          # Batch scraping
+│   │   │   └── create_embeddings.py     # Generate embeddings
+│   │   └── utils/                       # Utility functions
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   └── .env.example
